@@ -10,6 +10,8 @@ So, open scheme.html and type (+ 10 20) and press Ctrl+Enter. The result will be
 Enjoy! :-)
 
 Links:
-BiwaScheme: http://www.biwascheme.org/
-Ace Editor: https://ace.c9.io/
+------
+
+* BiwaScheme: http://www.biwascheme.org/
+* Ace Editor: https://ace.c9.io/
 
