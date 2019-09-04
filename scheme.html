@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<title>BiwaScheme Interpreter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<script src="ace.js"></script>
+<script src="biwascheme-0.6.9.js"></script>
+
+<body>
+
+<!-- Editor -->
+<div id="editor"></div>
+
+<script>
+    editor = window.ace.edit("editor");
+
+    FindLines = function(editor) {
+        text = "";
+        row = editor.selection.getCursor().row;
+        if (editor.session.getLine(row).length>0) {
+            // Calc min and max
+            var lmin = row;
+            while (lmin>0 && editor.session.getLine(lmin-1).length>0) lmin--;
+            var lmax = row;
+            while (lmax+1<editor.session.getLength() && editor.session.getLine(lmax+1).length>0) lmax++;
+            // show command
+            for (var i=lmin;i<=lmax;i++) {
+                text += editor.session.getLine(i)+"\n";
+            }
+            editor.gotoLine(lmax+1);
+            editor.navigateLineEnd();
+        } 
+        return text;
+    }
+
+
+    FindSelected = function(editor) {
+        range = editor.getSelectionRange();
+        text = editor.session.getTextRange(range);
+        if (text.length>0) {
+            line = range.end.row;
+            editor.clearSelection();
+            editor.gotoLine(line+1);
+            editor.navigateLineEnd();
+        }
+        return text;
+    }
+
+    ExecuteAtCursor = function(editor) {
+        selected_text = FindSelected(editor);
+        lined_text = FindLines(editor);
+        if (selected_text.length>0) {
+            scheme_evaluate(selected_text);
+        } else if (lined_text.length>0) {
+            scheme_evaluate(lined_text);
+        } else {
+            alert("Nothing to execute.");
+        }
+     }
+
+
+
+    editor.setOptions({
+       autoScrollEditorIntoView: true,
+       showPrintMargin: false, // hides the vertical limiting strip
+       maxLines: Infinity,
+       fontSize: "120%" // ensures that the editor fits in the environment
+    });
+    // Ctrl+Enter event
+    editor.commands.addCommand({
+        name: 'CtrlEnter',
+        bindKey: {win: 'Ctrl-Enter',  mac: 'Command-Enter'},
+        exec: function(editor) {
+            ExecuteAtCursor(editor);
+        },
+        readOnly: true // false if this command should not apply in readOnly mode
+    });
+
+    calcEditorSize = function() {
+        editor.setOptions({
+            maxLines: Math.floor(window.innerHeight / editor.renderer.lineHeight)
+        });        
+    }
+    window.onresize = calcEditorSize;
+
+    editor.setValue(";; BiwaScheme Interpreter with Ace Editor\n;; Written by Siniša Pavlović\n;; Use Ctrl+Enter to evaluate at cursor position or selected code\n\n");
+    editor.gotoLine(editor.session.getLength());
+
+    editor.focus();
+    calcEditorSize();
+
+    /* BiwaScheme */
+    onSchemeError = function(e) { 
+        editor.insert(e.message);
+    }
+    onSchemeResult = function(result) {
+        if (result == BiwaScheme.undef || result == null || result == undefined) {
+            editor.insert("-> nil");    
+        } else {
+            editor.insert("-> "+result);
+        }
+    }
+    biwa = new BiwaScheme.Interpreter(onSchemeError)
+    scheme_evaluate = function(code) {
+        editor.insert("\n\n");
+        return biwa.evaluate(code,onSchemeResult);
+    }
+
+    editor_insert = function(value) {
+        if (typeof value == "string") {
+            editor.insert(value);
+        } else {
+            editor.insert(JSON.stringify(value));
+        }
+    }
+
+    // Additional procedures
+    biwa.evaluate("(define nil '())");
+    biwa.evaluate('(define (display x) (js-call (js-eval "editor_insert") x))');
+    biwa.evaluate('(define (newline) (display "\n"))');
+    biwa.evaluate('(define (print x) (display x)(newline))');
+    biwa.evaluate('(define-macro (for params . body) `(let iter ((,(car params) ,(cadr params))) (if (< ,(car params) ,(caddr params))(begin ,@body (iter (+ ,(car params) ,(if (= (length params) 4) (cadddr params) 1)))))))');
+    biwa.evaluate('(define (loop x) (for (i 1 (+ x 1)) (print i)))');
+
+</script>
+
+     
+</body>
+</html>
+
